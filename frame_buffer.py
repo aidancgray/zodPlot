@@ -59,3 +59,55 @@ class Framebuffer():
         bits_written = self.fill_screen(0, 0, 0, 0)
         return bits_written
             
+    def draw_line(self, x0, y0, x1, y1, r=255, g=255, b=255, t=0):
+        # Start and stop coords must be positive
+        if (x0 < 0) or (x1 < 0) or (y0 < 0) or (y1 < 0):
+            return -1
+
+        # check if horiz line - easiest line to draw
+        if y0 == y1:
+            px_bytes = self._construct_px_bytes(r, g, b, t)
+            if x0 == x1:
+                line_bytes = px_bytes
+            else:
+                line_bytes = px_bytes * abs(x1 - x0)
+            mem_pos = (y0 * self.bytes_pp * self.width) + min(x0, x1)
+            self.fb.seek(mem_pos)
+            bits_written = self.fb.write(line_bytes)
+        
+        # check if vert line - simply loop through row
+        elif x0 == x1:
+            line_len = abs(y1 - y0)
+            bits_written = 0
+            for y in range(line_len):
+                bits_written = bits_written + self.write_pixel(x0, y, r, g, b, t)
+
+        # must be diagonal...
+        else:
+            m = ( y1 - y0 ) / ( x1 - x0 )
+            c = y0 - ( m * x0 )
+
+            # draw the pixelated line whichever way results in more pixels
+            num_x = abs(x1-x0)
+            num_y = abs(y1-y0)
+            px_list = []
+
+            if num_x >= num_y:
+                # solve y = m * x + c for each x
+                for x in range(min(x0,x1), max(x0,x1)+1):
+                    y = round(( x * m ) + c)
+                    px = (x, y)
+                    px_list.append(px)
+            else:
+                # solve x = ( y - c ) / m for each y
+                for y in range(min(y0,y1), max(y0,y1)):
+                    x = round(( y - c ) / m)
+                    px = (x, y)
+                    px_list.append(px)
+
+            # draw the line pixel-by-pixel
+            bits_written = 0
+            for px in px_list:
+                bits_written = bits_written + self.write_pixel(px[0], px[1], r, g, b, t)
+        
+        return bits_written
