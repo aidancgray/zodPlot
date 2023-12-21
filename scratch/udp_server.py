@@ -19,7 +19,7 @@ except ImportError:
 
 class AsyncUDPServer:
     def __init__(self, loop, local_ip, port, tdc_dict, ip_dict):
-        self.logger = logging.getLogger('ZOD')
+        self.logger = logging.getLogger('ZPLOT')
         self.q_packet = asyncio.Queue(maxsize=32)
         self.q_fifo = asyncio.Queue(maxsize=32)
         self.loop = loop
@@ -94,6 +94,9 @@ class AsyncUDPServer:
         
         return await loop.create_datagram_endpoint(
             lambda: protocol, sock=s)
+        
+        #transport, server = self.loop.run_until_complete(serverTask)
+        #return transport, server
 
 async def runUDPserverTest(loop):
     udp_server = AsyncUDPServer(loop, local_ip, port, tdc_dict, ip_dict)
@@ -103,7 +106,7 @@ if __name__ == "__main__":
     LOG_FORMAT = '%(asctime)s.%(msecs)03dZ %(name)-10s %(levelno)s \
         %(filename)s:%(lineno)d %(message)s'
     logging.basicConfig(datefmt = "%Y-%m-%d %H:%M:%S", format = LOG_FORMAT)
-    logger = logging.getLogger('ZOD')
+    logger = logging.getLogger('ZPLOT')
     logger.setLevel(logging.DEBUG)
     logger.debug('~~~~~~starting log~~~~~~')
 

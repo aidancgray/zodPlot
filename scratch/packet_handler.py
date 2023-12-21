@@ -13,7 +13,7 @@ SLEEP_TIME = 0.000001  # for short sleeps at the end of loops
 
 class packetHandler:
     def __init__(self, q_packet, q_fifo, ip_dict):
-        self.logger = logging.getLogger('ZOD')
+        self.logger = logging.getLogger('ZPLOT')
         self.q_packet = q_packet
         self.q_fifo = q_fifo
         self.ip_dict = ip_dict
@@ -42,7 +42,7 @@ class packetHandler:
             # await self.enqueue_fifo((pkt_src, pkt_timestamp))
 
             # Make sure the data is aligned properly and is newest packet            
-            if (pkt_data[4] == 0) and pkt_data[5] == 0 and (pkt_count >= self.packet_count):
+            if (pkt_data[4] == 0) and pkt_data[5] == 0 and (pkt_count > self.packet_count):
                 num_photons = (pkt_data[1]<<8) + pkt_data[0]
                 num_photon_bytes = num_photons * 6
                 self.logger.debug(f'NUM_PHOTONS: {num_photons} ({num_photon_bytes}B)')
@@ -67,14 +67,16 @@ class packetHandler:
                         x = xA + xB
                         y = yA + yB
                         p = photon[4]
+                        
+                        self.logger.debug(f'x={xA}+{xB} = {x}')
+                        self.logger.debug(f'y={yA}+{yB} = {y}')
+                        self.logger.debug(f'p={p}')
 
                         await self.enqueue_fifo((x, y, p))
                         p_num+=1            
                 else:
                     self.logger.debug(f'NO PHOTONS')
                     await asyncio.sleep(SLEEP_TIME)
-                
-                self.packet_count = pkt_count
 
         except Exception as e:
             self.logger.error(e)
@@ -90,14 +92,27 @@ async def runPktHandlerTest(loop):
     pkt_handler = packetHandler(q_packet=asyncio.Queue(),
                                 q_fifo=asyncio.Queue())
     
-    test_pkt = b'\x08\x00\x02\x00\x00\x00'
+    test_pkt_0 = b'\x08\x00\x02\x00\x00\x00'
+    test_pkt_1 = b'\xe3\x15\x57\x0a\x83\x00'
+    test_pkt_2 = b'\x16\x30\xad\x1a\xa1\x00'
+    test_pkt_3 = b'\x65\x06\x00\x09\xff\x00'
+    test_pkt_4 = b'\x95\x26\x2c\x2d\x99\x00'
+    test_pkt_5 = b'\xaa\x24\xf7\x2f\x92\x00'
+    test_pkt_6 = b'\x55\x07\xad\x0c\x42\x00'
+    test_pkt_7 = b'\x47\x13\xf2\x16\xe0\x00'
+    test_pkt_8 = b'\x2a\x2d\x57\x08\xb6\x00'
+    
+    test_pkt = test_pkt_0 + test_pkt_1 + test_pkt_2 + test_pkt_3 + test_pkt_4 + test_pkt_5 + test_pkt_6 + test_pkt_7 + test_pkt_8 
+    
     await pkt_handler.handlePacket(test_pkt)
+
+    #await asyncio.gather(pktHandler.start())
 
 if __name__ == "__main__":
     LOG_FORMAT = '%(asctime)s.%(msecs)03dZ %(name)-10s %(levelno)s \
         %(filename)s:%(lineno)d %(message)s'
     logging.basicConfig(datefmt = "%Y-%m-%d %H:%M:%S", format = LOG_FORMAT)
-    logger = logging.getLogger('ZOD')
+    logger = logging.getLogger('ZPLOT')
     logger.setLevel(logging.DEBUG)
     logger.debug('~~~~~~starting log~~~~~~')
 

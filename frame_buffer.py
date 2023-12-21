@@ -25,18 +25,22 @@ class Framebuffer():
                         + g.to_bytes(1, byteorder='little') 
                         + b.to_bytes(1, byteorder='little'))
         return px_bytes
+    
+    def go_to_mmap_from_px(self, x, y):
+        row_mem = y * self.bytes_pp * self.width
+        col_mem = x * self.bytes_pp
+        tot_mem = row_mem + col_mem
+        self.fb.seek(tot_mem)
+        return 0
 
     def write_pixel(self, x, y, r=255, g=255, b=255, t=0):
-        # mmap position: ( X * bytes-per-pixel ) + ( Y * bytes-per-row )
-        mem_pos = (x * self.bytes_pp) + (y * self.bytes_pp * self.width)
-        self.fb.seek(mem_pos)
+        self.go_to_mmap_from_px(x, y)
         px_bytes = self._construct_px_bytes(r, g, b, t)
         bits_written = self.fb.write(px_bytes)
         return bits_written
 
     def fill_row(self, y, r=255, g=255, b=255, t=0):
-        mem_pos = y * self.bytes_pp * self.width
-        self.fb.seek(mem_pos)
+        self.go_to_mmap_from_px(0, y)
         px_bytes = self._construct_px_bytes(r, g, b, t)
         row_bytes = px_bytes * self.width
         bits_written = self.fb.write(row_bytes)
@@ -71,8 +75,9 @@ class Framebuffer():
                 line_bytes = px_bytes
             else:
                 line_bytes = px_bytes * abs(x1 - x0)
-            mem_pos = (y0 * self.bytes_pp * self.width) + min(x0, x1)
-            self.fb.seek(mem_pos)
+            self.go_to_mmap_from_px(min(x0,x1), y0)
+            # mem_pos = (y0 * self.bytes_pp * self.width) + min(x0, x1)
+            # self.fb.seek(mem_pos)
             bits_written = self.fb.write(line_bytes)
         
         # check if vert line - simply loop through row

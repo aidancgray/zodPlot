@@ -14,12 +14,10 @@ import logging
 import argparse
 import shlex
 import numpy as np
-
+from PyQt6 import QtWidgets
 from multiprocessing import Process, Pipe, Event
-from async_data_sender import AsyncDataSender
 
-from data_rcvr import Plot2FrameBuffer
-
+from plot_async import *
 from udp_server import AsyncUDPServer
 from packet_handler import packetHandler
 
@@ -28,7 +26,7 @@ TEST_0_IP = '172.16.1.112'
 TEST_1_IP = '192.168.1.123'
 
 def custom_except_hook(loop, context):
-    logger = logging.getLogger('ZOD')
+    logger = logging.getLogger('ZPLOT')
     logger.setLevel(logging.WARN)
     
     if repr(context['exception']) == 'SystemExit()':
@@ -40,9 +38,9 @@ async def runDAQ(loop, pipe_head, pipe_tail, closing_event, opts):
                                  '%(name)-10s %(levelno)s ' \
                                  '%(filename)s:%(lineno)d %(message)s')
     
-    logger = logging.getLogger('ZOD')
+    logger = logging.getLogger('ZPLOT')
     logger.setLevel(opts.logLevel)
-    logger.info('~~~~~~starting log~~~~~~')
+    logger.info('~~~~~~starting ZPLOT log~~~~~~')
 
     try:
         local_iP = netifaces.ifaddresses('eth0')[netifaces.AF_INET][0]['addr']
@@ -77,37 +75,17 @@ async def runDAQ(loop, pipe_head, pipe_tail, closing_event, opts):
                                   pipe_tail,
                                   closing_event,
                                   udp_server.q_fifo,
-                                  opts)
+                                  opts,)
 
     await asyncio.gather(udp_server.start_server(),
                          pkt_handler.start(),
                          data_sender.start(),)
     
-async def run_framebuffer_display(loop, pipe_tail, closing_event, opts):
-    logging.basicConfig(datefmt = "%Y-%m-%d %H:%M:%S",
-                        format = '%(asctime)s.%(msecs)03dZ ' \
-                                 '%(name)-10s %(levelno)s ' \
-                                 '%(filename)s:%(lineno)d %(message)s')
-    
-    logger = logging.getLogger('FB_DISP')
-    logger.setLevel(opts.logLevel)
-    logger.info('~~~~~~starting log~~~~~~')
-
-    plot2FB = Plot2FrameBuffer(pipe_tail, closing_event, opts)
-    
-    await asyncio.gather(plot2FB.start())
-
-def start_receiver(pipe_tail, closing_event, opts):
-    loop = asyncio.get_event_loop()
-    loop.set_exception_handler(custom_except_hook)
-    loop.run_until_complete(run_framebuffer_display(loop, pipe_tail, closing_event, opts))
-    try:
-        loop.run_forever()
-    except KeyboardInterrupt:
-        print('Exiting Program...')
-    finally:
-        loop.close()
-        asyncio.set_event_loop(None)
+def start_receiver(pipe_tail, opts):
+    app = QtWidgets.QApplication(sys.argv)
+    window = PyQtGraphTest(pipe_tail, opts)
+    window.show()
+    app.exec()
 
 def start_sender(pipe_head, pipe_tail, closing_event, opts):
     loop = asyncio.get_event_loop()
@@ -122,14 +100,11 @@ def start_sender(pipe_head, pipe_tail, closing_event, opts):
         asyncio.set_event_loop(None)
 
 def start_processes(opts):
-    closing_event = Event()  # Event to signal closing of the receiver to the other process
+    closing_event = Event()  # Event to signal closing of the plot window to the other process
     
     pipe_tail, pipe_head = Pipe(False)  # Simplex Pipe for data transport
     
-    receiver = Process(target=start_receiver, args=(
-        pipe_tail, 
-        closing_event,
-        opts,))
+    receiver = Process(target=start_receiver, args=(pipe_tail, opts,))
     receiver.start()
     
     sender = Process(target=start_sender, args=(
@@ -156,8 +131,10 @@ def main(argv=None):
     parser = argparse.ArgumentParser(sys.argv[0])
     parser.add_argument('--logLevel', type=int, default=logging.INFO,
                         help='logging threshold. 10=debug, 20=info, 30=warn')
+    parser.add_argument('--plotSize', type=int, default=100,
+                        help='plot size (square)')
     parser.add_argument('--updateTime', type=int, default=1,
-                        help='screen update time (ms)')
+                        help='plot update time (ms)')
     opts = parser.parse_args(argv)
     
     exit_data = start_processes(opts)
