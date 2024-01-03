@@ -2,37 +2,87 @@ from frame_buffer import Framebuffer
 import time
 import numpy as np
 
-
 start_time = time.time()
-NUM_PIXELS = 100000
-px_list = np.random.randint(0,479,(NUM_PIXELS,2))
+NUM_PIXELS = 1000
 
-fb0 = Framebuffer()
+def test_1():
+    print('### test_1: mmap + ndarray ###')
 
-lap_time_1 = time.time()
+    px_list = np.random.randint(0,479,(NUM_PIXELS,2))
+    fb0 = Framebuffer()
+    fb0.clear_screen()
 
-fb0.clear_screen()
+    lap_time_1 = time.time()
 
-lap_time_2 = time.time()
+    for i in range(len(px_list)):
+        fb0.write_px(x=px_list[i][0], y=px_list[i][1])
 
-fb0.fb.seek(0)
+    lap_time_2 = time.time()
 
-lap_time_3 = time.time()
+    wp_time = 1000* (lap_time_2-lap_time_1) / NUM_PIXELS  # ms/px
+    wp_rate = 1 / (wp_time / 1000)  # px/s
+    total_time = (lap_time_2-lap_time_1) * 1000  # ms
 
-for i in range(len(px_list)):
-    fb0.write_pixel(x=px_list[i][0], y=px_list[i][1])
+    print(f'write_px: {wp_time} ms/px')
+    print(f'write_px: {wp_rate} px/s')
+    print(f'TOTAL:    {total_time} ms')
 
-lap_time_4 = time.time()
+    wait_ = input("clear screen...")
+    fb0.clear_screen()
 
-cls_time = (lap_time_2-lap_time_1) * 1000  # ms
-sk_time = (lap_time_3-lap_time_2) * 1000  # ms
-wp_time = 1000* (lap_time_4-lap_time_3) / NUM_PIXELS  # ms/px
-wp_rate = 1 / (wp_time / 1000)  # px/s
+def test_2():
+    print('### test_2: mmap + ndarray + buffer array ###')
 
-print(f'clear_screen: {cls_time} ms')
-print(f'seek:         {sk_time} ms')
-print(f'write_pixel:  {wp_time} ms/px')
-print(f'write_pixel:  {wp_rate} px/s')
+    px_list = np.random.randint(0,479,(NUM_PIXELS,2))
+    fb0 = Framebuffer(use_buffer_array=True)
+    lap_time_1 = time.time()
 
-wait_ = input("clear screen...")
-fb0.clear_screen()
+    for i in range(len(px_list)):
+        fb0.write_px_to_buf(x=px_list[i][0], y=px_list[i][1])
+
+    lap_time_2 = time.time()
+
+    fb0.update_fb()
+
+    lap_time_3 = time.time()
+
+    wp_time = 1000* (lap_time_2-lap_time_1) / NUM_PIXELS  # ms/px
+    wp_rate = 1 / (wp_time / 1000)  # px/s
+    update_time = (lap_time_3-lap_time_2) * 1000  # ms
+    total_time = (lap_time_3-lap_time_1) * 1000  # ms
+
+    print(f'write_px_to_buf: {wp_time} ms/px')
+    print(f'write_px_to_buf: {wp_rate} px/s')
+    print(f'update_fb:       {update_time} ms')
+    print(f'TOTAL:           {total_time} ms')
+
+    wait_ = input("clear screen...")
+    fb0.clear_screen()
+
+def test_3():
+    print('### test_3: numpy memmap ###')
+
+    px_list = np.random.randint(0,479,(NUM_PIXELS,2))
+    fb0 = Framebuffer(use_numpy_memmap=True)
+    lap_time_1 = time.time()
+
+    for i in range(len(px_list)):
+        fb0.write_px(x=px_list[i][0], y=px_list[i][1])
+
+    lap_time_2 = time.time()
+
+    wp_time = 1000* (lap_time_2-lap_time_1) / NUM_PIXELS  # ms/px
+    wp_rate = 1 / (wp_time / 1000)  # px/s
+    total_time = (lap_time_2-lap_time_1) * 1000  # ms
+
+    print(f'write_px: {wp_time} ms/px')
+    print(f'write_px: {wp_rate} px/s')
+    print(f'TOTAL:    {total_time} ms')
+
+    wait_ = input("clear screen...")
+    fb0.clear_screen()
+
+if __name__ == "__main__":
+    test_1()  # 38k px/s
+    test_2()  # 23k px/s
+    test_3()  # 12k px/s
