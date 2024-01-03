@@ -1,4 +1,4 @@
-#!/home/idg/src/zodPlot/venv/bin/python
+#!/usr/bin/python3
 from frame_buffer import Framebuffer
 
 fb0 = Framebuffer()
