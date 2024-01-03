@@ -24,7 +24,8 @@ class packetHandler:
             if not self.q_packet.empty():
                 pkt = await self.q_packet.get()
                 await self.handlePacket(pkt)
-            await asyncio.sleep(SLEEP_TIME)
+            else:
+                await asyncio.sleep(SLEEP_TIME)
 
     async def handlePacket(self, pkt):
         try:

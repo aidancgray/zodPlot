@@ -95,7 +95,8 @@ async def run_framebuffer_display(loop, pipe_tail, closing_event, opts):
 
     plot2FB = Plot2FrameBuffer(pipe_tail, closing_event, opts)
     
-    await asyncio.gather(plot2FB.start())
+    await asyncio.gather(plot2FB.start_pipe_rcv(),
+                         )
 
 def start_receiver(pipe_tail, closing_event, opts):
     loop = asyncio.get_event_loop()

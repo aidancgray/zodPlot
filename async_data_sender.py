@@ -27,8 +27,8 @@ class AsyncDataSender:
                     new_data = await self.q_fifo.get()
                     self.logger.debug(f'PIPE_HEAD_SEND: {new_data}')
                     self.pipe_head.send(new_data)
-            
-            await asyncio.sleep(0.000001)
+            else:
+                await asyncio.sleep(0.000001)
         
         self.logger.info('closing_event.is_set()')
         sys.exit(0)
