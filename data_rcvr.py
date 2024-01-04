@@ -18,9 +18,18 @@ class Plot2FrameBuffer():
 
         self.fb = Framebuffer()
 
-    async def start(self):
+    async def start_pipe_rcv(self):
         while True:
             if self.pipe_tail.poll():
                 new_data = self.pipe_tail.recv()
                 self.logger.debug(f"PIPE_TAIL_RECV: {new_data}")
-            await asyncio.sleep(self.update_time)
+                self.fb.raw_data_to_screen_mono(new_data[0],
+                                                new_data[1],
+                                                new_data[2],)
+
+            else:
+                await asyncio.sleep(self.update_time)
+    
+    async def start_fb_plot(self):
+        while True:
+            self.fb.update_fb()

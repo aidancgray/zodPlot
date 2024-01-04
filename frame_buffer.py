@@ -4,9 +4,12 @@ import numpy as np
 
 class Framebuffer():
     def __init__(self, fb_path="/dev/fb0", 
-                 src_size_bit_depth=16, 
-                 use_numpy_memmap=False, 
-                 use_buffer_array=False):
+                 src_size_bit_depth=16,
+                 use_numpy_memmap=False,   # mode=1
+                 use_numpy_buffer=False,   # mode=2
+                 use_buffer_fb=False,      # mode=3
+                 use_numpy_ndarray=False,  # mode=4
+                 ):
         
         with open("/sys/class/graphics/fb0/virtual_size", "r") as f:
             screen = f.read()
@@ -24,55 +27,131 @@ class Framebuffer():
                                 dtype='uint8', 
                                 mode='w+', 
                                 shape=(self.height,self.width,self.bytes_pp))
-        elif use_buffer_array:
+            self.mode = 1
+            
+        elif use_numpy_buffer:
             fb_f = os.open(fb_path, os.O_RDWR)
             fb_mmap = mmap.mmap(fb_f, self.width * self.height * self.bytes_pp)
             self.fb = np.ndarray(shape=(self.height, self.width, self.bytes_pp), dtype=np.uint8, buffer=fb_mmap)
             self.fb_buf = np.ndarray(shape=self.fb.shape, dtype=float)
-            self.fb_buf[:] = 0
-        else:
+            self.fb_buf[:] = 0.0
+            self.mode = 2
+        
+        elif use_buffer_fb:
+            fb_f = os.open(fb_path, os.O_RDWR)
+            self.fb = mmap.mmap(fb_f, self.width * self.height * self.bytes_pp)
+            self.fb_buf = np.ndarray(shape=(self.height, self.width, self.bytes_pp), dtype=float)
+            self.fb_buf[:] = 0.0
+            self.mode = 3
+
+        elif use_numpy_ndarray:
             fb_f = os.open(fb_path, os.O_RDWR)
             fb_mmap = mmap.mmap(fb_f, self.width * self.height * self.bytes_pp)
             self.fb = np.ndarray(shape=(self.height, self.width, self.bytes_pp), dtype=np.uint8, buffer=fb_mmap)
+            self.mode = 4
+
+        else:
+            fb_f = os.open(fb_path, os.O_RDWR)
+            self.fb = mmap.mmap(fb_f, self.width * self.height * self.bytes_pp)
+            self.mode = 0
+            self.fb_zero = b'\x00' * self.width * self.height * self.bytes_pp
 
     def update_fb(self):
-        self.fb[:] = self.fb_buf.round()
+        if self.mode==2:
+            self.fb[:] = self.fb_buf.round()
+        elif self.mode==3:
+            buf_tmp = np.uint8(np.clip(self.fb_buf.reshape(-1).round(), 0, 255))
+            self.fb.seek(0)
+            self.fb.write(buf_tmp)
 
-    def write_px_to_buf(self, x, y, r=255, g=255, b=255, t=0):
+    def _write_px_to_buf(self, x, y, r=255, g=255, b=255, t=0):
         if self.bits_pp == 32:
             self.fb_buf[y, x] += [b, g, r, t]
         else:
             self.fb_buf[y, x] += [r, g, b]
 
-    def write_px(self, x, y, r=255, g=255, b=255, t=0):
-        if self.bits_pp == 32:
-            self.fb[y, x] += np.array([b, g, r, t], np.uint8)
+    def write_px(self, x, y, r=255, g=255, b=255, t=0, update=True):
+        if self.mode == 2 or self.mode == 3:
+            self._write_px_to_buf(x, y, r, g, b, t)
+            if update:
+                self.update_fb()
+
+        elif self.mode == 0:
+            # Not yet implemented
+            pass
+
         else:
-            self.fb[y, x] += np.array([r, g, b], np.uint8)
+            if self.bits_pp == 32:
+                self.fb[y, x] += np.array([b, g, r, t], np.uint8)
+            else:
+                self.fb[y, x] += np.array([r, g, b], np.uint8)
 
     def fill_row(self, y, r=255, g=255, b=255, t=0):
-        if self.bits_pp == 32:
-            self.fb[y, :] = [b, g, r, t]
+        if self.mode == 2 or self.mode == 3:
+            if self.bits_pp == 32:
+                self.fb_buf[y, :] = [b, g, r, t]
+            else:
+                self.fb_buf[y, :] = [r, g, b]
+            
+            self.update_fb()
+        
+        elif self.mode == 0:
+            # Not yet implemented
+            pass
+
         else:
-            self.fb[y, :] = [r, g, b]
+            if self.bits_pp == 32:
+                self.fb[y, :] = np.array([b, g, r, t], np.uint8)
+            else:
+                self.fb[y, :] = np.array([r, g, b], np.uint8)
         
     def fill_column(self, x, r=255, g=255, b=255, t=0):
-        if self.bits_pp == 32:
-            self.fb[: ,x] = [b, g, r, t]
-        else:
-            self.fb[: ,x] = [r, g, b]
+        if self.mode == 2 or self.mode == 3:
+            if self.bits_pp == 32:
+                self.fb_buf[: ,x] = [b, g, r, t]
+            else:
+                self.fb_buf[: ,x] = [r, g, b]
+            
+            self.update_fb()
         
-    def fill_screen(self, r=255, g=255, b=255, t=0):
-        if self.bits_pp == 32:
-            self.fb[:] = [b, g, r, t]
+        elif self.mode == 0:
+            # Not yet implemented
+            pass
+
         else:
-            self.fb[:] = [r, g, b]
+            if self.bits_pp == 32:
+                self.fb[: ,x] = np.array([b, g, r, t], np.uint8)
+            else:
+                self.fb[: ,x] = np.array([r, g, b], np.uint8)
+        
+    def fill_screen(self, r=255, g=255, b=255, t=0):    
+        if self.mode == 2 or self.mode == 3:
+            if self.bits_pp == 32:
+                self.fb_buf[:] = [b, g, r, t]
+            else:
+                self.fb_buf[:] = [r, g, b]
+            
+            self.update_fb()
+            
+        elif self.mode == 0:
+            # Not yet implemented
+            pass
+
+        else:
+            if self.bits_pp == 32:
+                self.fb[:] = np.array([b, g, r, t], np.uint8)
+            else:
+                self.fb[:] = np.array([r, g, b], np.uint8)
 
     def clear_screen(self):
-        self.fill_screen(0, 0, 0, 0)
+        if self.mode == 0:
+            self.fb.seek(0)
+            self.fb.write(self.fb_zero)
+        else:
+            self.fill_screen(0, 0, 0, 0)
 
-    def raw_data_to_screen_mono(self, x, y, p):
+    def raw_data_to_screen_mono(self, x, y, p, update=False):
         x_screen = round(x * self.size_ratio)
         y_screen = round(y * self.size_ratio)
         p_screen = p * self.p_ratio
-        self.write_px(y_screen, x_screen, p_screen, p_screen, p_screen)
+        self.write_px(y_screen, x_screen, p_screen, p_screen, p_screen, update)
