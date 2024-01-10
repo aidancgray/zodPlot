@@ -1,6 +1,7 @@
 import os
 import mmap
 import numpy as np
+import logging
 
 class Framebuffer():
     def __init__(self, fb_path="/dev/fb0", 
@@ -10,7 +11,14 @@ class Framebuffer():
                  use_buffer_fb=False,      # mode=3
                  use_numpy_ndarray=False,  # mode=4
                  ):
-        
+
+        logging.basicConfig(datefmt = "%Y-%m-%d %H:%M:%S",
+                            format = '%(asctime)s.%(msecs)03dZ ' \
+                                     '%(name)-10s %(levelno)s ' \
+                                     '%(filename)s:%(lineno)d %(message)s')
+        self.logger = logging.getLogger('FBUFF')
+        self.logger.setLevel(logging.INFO) 
+
         with open("/sys/class/graphics/fb0/virtual_size", "r") as f:
             screen = f.read()
             self.width, self.height = [int(i) for i in screen.split(",")]
@@ -151,7 +159,11 @@ class Framebuffer():
             self.fill_screen(0, 0, 0, 0)
 
     def raw_data_to_screen_mono(self, x, y, p, update=False):
+        self.logger.info(f'x_raw: {x}')
+        # self.logger.debug(f'y_raw: {y}')
         x_screen = round(x * self.size_ratio)
         y_screen = round(y * self.size_ratio)
-        p_screen = p * self.p_ratio
-        self.write_px(y_screen, x_screen, p_screen, p_screen, p_screen, update)
+        # p_screen = p * self.p_ratio
+        p_screen = p
+        self.write_px(x_screen, y_screen, p_screen, p_screen, p_screen, update)
+        self.logger.debug(f'y: {y_screen} | x: {x_screen} | p: {p_screen}')

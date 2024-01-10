@@ -1,7 +1,8 @@
-import time
 import logging
 import asyncio
 from frame_buffer import Framebuffer
+
+SLEEP_TIME = 0.000001  # for short sleeps at the end of loops
 
 class Plot2FrameBuffer():
 
@@ -14,9 +15,9 @@ class Plot2FrameBuffer():
         
         self.pipe_tail = pipe_tail
         self.closing_event = closing_event
-        self.update_time = opts.updateTime
+        self.update_time = opts.updateTime / 1000
 
-        self.fb = Framebuffer()
+        self.fb = Framebuffer(use_buffer_fb=True)
 
     async def start_pipe_rcv(self):
         while True:
@@ -28,8 +29,9 @@ class Plot2FrameBuffer():
                                                 new_data[2],)
 
             else:
-                await asyncio.sleep(self.update_time)
+                await asyncio.sleep(SLEEP_TIME)
     
     async def start_fb_plot(self):
         while True:
             self.fb.update_fb()
+            await asyncio.sleep(self.update_time)

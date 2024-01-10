@@ -60,9 +60,11 @@ class packetHandler:
                                           f'{photon[2:3].hex()} {photon[3:4].hex()} ' \
                                           f'{photon[4:5].hex()} {photon[5:6].hex()}')
                         
-                        xA = (photon[1] & 63) << 8
+                        # xA = (photon[1] & 63) << 8
+                        xA = photon[1] << 8
                         xB = photon[0]
-                        yA = (photon[3] & 63) << 8
+                        # yA = (photon[3] & 63) << 8
+                        yA = photon[3] << 8
                         yB = photon[2]
 
                         x = xA + xB
@@ -83,9 +85,10 @@ class packetHandler:
 
     async def enqueue_fifo(self, data):
         if self.q_fifo.full():
-            self.logger.warn(f'Transmit Data Queue is FULL')
+            self.logger.warn(f'FIFO Queue is FULL')
         else:
             await self.q_fifo.put(data)
+        await asyncio.sleep(SLEEP_TIME)
 
 async def runPktHandlerTest(loop):
     pkt_handler = packetHandler(q_packet=asyncio.Queue(),

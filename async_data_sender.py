@@ -2,14 +2,16 @@ import sys
 import asyncio
 import logging
 
+SLEEP_TIME = 0.000001  # for short sleeps at the end of loops
+
 class AsyncDataSender:
     def __init__(self, pipe_head, pipe_tail, closing_event, q_fifo, opts) -> None:
         logging.basicConfig(datefmt = "%Y-%m-%d %H:%M:%S",
                             format = '%(asctime)s.%(msecs)03dZ ' \
                                      '%(name)-10s %(levelno)s ' \
                                      '%(filename)s:%(lineno)d %(message)s')
-        self.logger = logging.getLogger('ZOD')
-
+        self.logger = logging.getLogger('DATA_SEND')
+        self.logger.setLevel(opts.logLevel)
         self.pipe_head = pipe_head
         self.pipe_tail = pipe_tail
         self.closing_event = closing_event
@@ -27,8 +29,10 @@ class AsyncDataSender:
                     new_data = await self.q_fifo.get()
                     self.logger.debug(f'PIPE_HEAD_SEND: {new_data}')
                     self.pipe_head.send(new_data)
+                else:
+                    await asyncio.sleep(SLEEP_TIME)
             else:
-                await asyncio.sleep(0.000001)
+                await asyncio.sleep(SLEEP_TIME)
         
         self.logger.info('closing_event.is_set()')
         sys.exit(0)

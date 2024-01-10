@@ -24,8 +24,10 @@ from udp_server import AsyncUDPServer
 from packet_handler import packetHandler
 
 TDC_0_IP = '192.168.1.10'
-TEST_0_IP = '172.16.1.112'
+TEST_0_IP = '172.16.0.10'
 TEST_1_IP = '192.168.1.123'
+TEST_2_IP = '172.16.0.171'
+TEST_3_IP = '172.16.1.112'
 
 def custom_except_hook(loop, context):
     logger = logging.getLogger('ZOD')
@@ -45,21 +47,28 @@ async def runDAQ(loop, pipe_head, pipe_tail, closing_event, opts):
     logger.info('~~~~~~starting log~~~~~~')
 
     try:
-        local_iP = netifaces.ifaddresses('eth0')[netifaces.AF_INET][0]['addr']
+        local_ip = netifaces.ifaddresses('eth0')[netifaces.AF_INET][0]['addr']
     except:
-        local_iP = '192.168.1.123'
+        local_ip = '192.168.1.123'
     
     port = 60000
-    
-    tdc_dict = {"tdc_0_ip": TDC_0_IP, 
-                "test_0_ip": TEST_0_IP, 
-                "test_1_ip": TEST_1_IP,}
+    tdc_dict = {
+        "tdc_0_ip": TDC_0_IP,
+        "test_0_ip": TEST_0_IP,
+        "test_1_ip": TEST_1_IP,
+        "test_2_ip": TEST_2_IP,
+        "test_3_ip": TEST_3_IP,
+    }
 
-    ip_dict = {TDC_0_IP: "tdc_0_ip", 
-               TEST_0_IP: "test_0_ip", 
-               TEST_1_IP: "test_1_ip",}
+    ip_dict = {
+        TDC_0_IP: "tdc_0_ip",
+        TEST_0_IP: "test_0_ip",
+        TEST_1_IP: "test_1_ip",
+        TEST_2_IP: "test_2_ip",
+        TEST_3_IP: "test_3_ip",
+    }
 
-    logger.info(f'ZPLOT IP = {local_iP}')
+    logger.info(f'ZPLOT IP = {local_ip}')
     logger.info(f'TDC_0 IP = {tdc_dict["tdc_0_ip"]}')
     logger.info(f'PORT = {port}')
     
@@ -67,7 +76,8 @@ async def runDAQ(loop, pipe_head, pipe_tail, closing_event, opts):
                                 local_ip='', 
                                 port=port, 
                                 tdc_dict=tdc_dict, 
-                                ip_dict=ip_dict)
+                                ip_dict=ip_dict,
+                                opts=opts)
     
     pkt_handler = packetHandler(q_packet=udp_server.q_packet, 
                                 q_fifo=udp_server.q_fifo, 
@@ -81,7 +91,8 @@ async def runDAQ(loop, pipe_head, pipe_tail, closing_event, opts):
 
     await asyncio.gather(udp_server.start_server(),
                          pkt_handler.start(),
-                         data_sender.start(),)
+                         data_sender.start(),
+                         )
     
 async def run_framebuffer_display(loop, pipe_tail, closing_event, opts):
     logging.basicConfig(datefmt = "%Y-%m-%d %H:%M:%S",
@@ -148,7 +159,7 @@ def start_processes(opts):
     
     return 0
 
-def main(argv=None):
+def argparser(argv):
     if argv is None:
         argv = sys.argv[1:]
     if isinstance(argv, str):
@@ -157,12 +168,15 @@ def main(argv=None):
     parser = argparse.ArgumentParser(sys.argv[0])
     parser.add_argument('--logLevel', type=int, default=logging.INFO,
                         help='logging threshold. 10=debug, 20=info, 30=warn')
-    parser.add_argument('--updateTime', type=int, default=1,
+    parser.add_argument('--updateTime', type=int, default=1000,
                         help='screen update time (ms)')
     opts = parser.parse_args(argv)
-    
+
+    return opts
+
+def main(argv=None):
+    opts = argparser(argv)    
     exit_data = start_processes(opts)
-    
     sys.exit(exit_data)
     
 if __name__ == "__main__":
