@@ -15,46 +15,30 @@ import sys
 import argparse
 import shlex
 from multiprocessing import Process
+from signal import SIGINT, SIGTERM
 
-try:
-    import signal
-except ImportError:
-    signal = None
 
 class AsyncUDPServer:
-    def __init__(self, loop, local_ip, port, tdc_dict, ip_dict, opts):
+    def __init__(self, local_ip, port, tdc_dict, ip_dict, opts):
         self.log_level = opts.logLevel
         logging.basicConfig(datefmt = "%Y-%m-%d %H:%M:%S",
                             format = '%(asctime)s.%(msecs)03dZ ' \
                                      '%(name)-10s %(levelno)s ' \
                                      '%(filename)s:%(lineno)d %(message)s')
-        self.logger = logging.getLogger('ZOD')
+        self.logger = logging.getLogger('DAQ')
         self.logger.setLevel(self.log_level)
-        self.q_packet = asyncio.Queue(maxsize=1000)
-        self.q_fifo = asyncio.Queue(maxsize=1000)
-        self.loop = loop
+        self.q_packet = asyncio.Queue()
+        self.q_fifo = asyncio.Queue()
         self.addr = (local_ip, port)
         self.tdc_dict = tdc_dict
         self.ip_dict = ip_dict
         self.server_task = None
-
-    def startUDP(self):
-        if signal is not None:
-            self.loop.add_signal_handler(signal.SIGINT, self.loop.stop)
-        
-        transport, server = self.start_server()
-        
-        try:
-            self.loop.run_forever()
-        finally:
-            server.close()
-            self.loop.close()
-    
+            
     async def start_server(self):
         self.logger.debug('UDP Server started')
 
         class AsyncUDPServerProtocol(asyncio.DatagramProtocol):
-            def __init__(self, loop, q_packet, tdc_dict, ip_dict, log_level, logger):
+            def __init__(self, loop, q_packet, tdc_dict, ip_dict, logger):
                 self.loop = loop
                 self.logger = logger
                 self.q_packet = q_packet
@@ -102,21 +86,15 @@ class AsyncUDPServer:
             self.q_packet,
             self.tdc_dict,
             self.ip_dict,
-            self.log_level,
             self.logger
             )
         
         return await loop.create_datagram_endpoint(
             lambda: protocol, sock=s)
 
-async def runUDPserverTest(loop, local_ip, port, tdc_dict, ip_dict, opts):
-    udp_server = AsyncUDPServer(loop, 
-                                local_ip, 
-                                port, 
-                                tdc_dict, 
-                                ip_dict, 
-                                opts)
-    await asyncio.gather(udp_server.start_server())
+async def runUDPserverTest(local_ip, port, tdc_dict, ip_dict, opts):
+    udp_server = AsyncUDPServer(local_ip, port, tdc_dict, ip_dict, opts)
+    task_ret = await asyncio.gather(udp_server.start_server())
 
 def argparser(argv):
     if argv is None:
@@ -131,13 +109,30 @@ def argparser(argv):
 
     return opts
 
+def start_processes(logger, local_ip, port, tdc_dict, ip_dict, opts):
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    
+    for signal_enum in [SIGINT, SIGTERM]:
+        loop.add_signal_handler(signal_enum, loop.stop)
+    
+    try:
+        loop.run_until_complete(runUDPserverTest(local_ip, port, tdc_dict, ip_dict, opts))
+        # asyncio.run(runUDPserverTest(local_ip, port, tdc_dict, ip_dict, opts))
+        loop.run_forever()
+    except RuntimeError as exc:
+        logger.info(exc)
+    finally:
+        loop.close()
+        asyncio.set_event_loop(None)
+
 def main(argv=None):
     opts = argparser(argv)
 
     LOG_FORMAT = '%(asctime)s.%(msecs)03dZ %(name)-10s %(levelno)s \
         %(filename)s:%(lineno)d %(message)s'
     logging.basicConfig(datefmt = "%Y-%m-%d %H:%M:%S", format = LOG_FORMAT)
-    logger = logging.getLogger('ZOD')
+    logger = logging.getLogger('DAQ')
     logger.setLevel(opts.logLevel)
     logger.info('~~~~~~starting log~~~~~~')
 
@@ -165,23 +160,18 @@ def main(argv=None):
         TEST_3_IP: "test_3_ip",
     }
     
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(runUDPserverTest(loop, 
-                                             local_ip, 
-                                             port, 
-                                             tdc_dict, 
-                                             ip_dict, 
-                                             opts))
-
-    try:
-        loop.run_forever()    
-    except KeyboardInterrupt:
-        logger.info('Exiting Program...')
-    finally:
-        loop.close()
-        asyncio.set_event_loop(None)
-
-if __name__ == "__main__":
-    p = Process(target=main)
+    p = Process(target=start_processes,
+                args=(logger, 
+                      local_ip, 
+                      port, 
+                      tdc_dict, 
+                      ip_dict, 
+                      opts))
     p.start()
-    p.join()
+    try:
+        p.join()
+    except KeyboardInterrupt:
+        logger.info('~~~~~~ stopping udp_server ~~~~~~')
+    
+if __name__ == "__main__":
+    main() 

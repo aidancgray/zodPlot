@@ -15,7 +15,9 @@ import argparse
 import shlex
 import numpy as np
 
-from multiprocessing import Process, Pipe, Event
+from signal import SIGINT, SIGTERM
+
+from multiprocessing import Process, Queue, Event
 from async_data_sender import AsyncDataSender
 
 from data_rcvr import Plot2FrameBuffer
@@ -29,22 +31,22 @@ TEST_1_IP = '192.168.1.123'
 TEST_2_IP = '172.16.0.171'
 TEST_3_IP = '172.16.1.112'
 
-def custom_except_hook(loop, context):
-    logger = logging.getLogger('ZOD')
-    logger.setLevel(logging.WARN)
+# def custom_except_hook(loop, context):
+#     logger = logging.getLogger('ZODPLOT')
+#     logger.setLevel(logging.WARN)
     
-    if repr(context['exception']) == 'SystemExit()':
-        logger.debug('Exiting Program...')
+#     if repr(context['exception']) == 'SystemExit()':
+#         logger.debug('Exiting Program...')
 
-async def runDAQ(loop, pipe_head, pipe_tail, closing_event, opts):
+async def runDAQ(q_mp, closing_event, opts):
     logging.basicConfig(datefmt = "%Y-%m-%d %H:%M:%S",
                         format = '%(asctime)s.%(msecs)03dZ ' \
                                  '%(name)-10s %(levelno)s ' \
                                  '%(filename)s:%(lineno)d %(message)s')
     
-    logger = logging.getLogger('ZOD')
+    logger = logging.getLogger('DAQ')
     logger.setLevel(opts.logLevel)
-    logger.info('~~~~~~starting log~~~~~~')
+    logger.info('~~~~~~ starting data acquisition ~~~~~~')
 
     try:
         local_ip = netifaces.ifaddresses('eth0')[netifaces.AF_INET][0]['addr']
@@ -59,7 +61,6 @@ async def runDAQ(loop, pipe_head, pipe_tail, closing_event, opts):
         "test_2_ip": TEST_2_IP,
         "test_3_ip": TEST_3_IP,
     }
-
     ip_dict = {
         TDC_0_IP: "tdc_0_ip",
         TEST_0_IP: "test_0_ip",
@@ -71,9 +72,8 @@ async def runDAQ(loop, pipe_head, pipe_tail, closing_event, opts):
     logger.info(f'ZPLOT IP = {local_ip}')
     logger.info(f'TDC_0 IP = {tdc_dict["tdc_0_ip"]}')
     logger.info(f'PORT = {port}')
-    
-    udp_server = AsyncUDPServer(loop=loop, 
-                                local_ip='', 
+
+    udp_server = AsyncUDPServer(local_ip='', 
                                 port=port, 
                                 tdc_dict=tdc_dict, 
                                 ip_dict=ip_dict,
@@ -83,18 +83,16 @@ async def runDAQ(loop, pipe_head, pipe_tail, closing_event, opts):
                                 q_fifo=udp_server.q_fifo, 
                                 ip_dict=ip_dict)
     
-    data_sender = AsyncDataSender(pipe_head,
-                                  pipe_tail,
+    data_sender = AsyncDataSender(q_mp,
                                   closing_event,
                                   udp_server.q_fifo,
                                   opts)
 
-    await asyncio.gather(udp_server.start_server(),
-                         pkt_handler.start(),
-                         data_sender.start(),
-                         )
+    await asyncio.gather(udp_server.start_server(), 
+                         pkt_handler.start(), 
+                         data_sender.start(),)
     
-async def run_framebuffer_display(loop, pipe_tail, closing_event, opts):
+async def run_framebuffer_display(q_mp, closing_event, opts):
     logging.basicConfig(datefmt = "%Y-%m-%d %H:%M:%S",
                         format = '%(asctime)s.%(msecs)03dZ ' \
                                  '%(name)-10s %(levelno)s ' \
@@ -102,62 +100,86 @@ async def run_framebuffer_display(loop, pipe_tail, closing_event, opts):
     
     logger = logging.getLogger('FB_DISP')
     logger.setLevel(opts.logLevel)
-    logger.info('~~~~~~starting log~~~~~~')
+    logger.info('~~~~~~ starting framebuffer display ~~~~~~')
 
-    plot2FB = Plot2FrameBuffer(pipe_tail, closing_event, opts)
+    plot2FB = Plot2FrameBuffer(q_mp, closing_event, opts)
     
-    await asyncio.gather(plot2FB.start_pipe_rcv(),
-                         )
+    await asyncio.gather(plot2FB.start_get_q_mp_data(), plot2FB.start_fb_plot())
 
-def start_receiver(pipe_tail, closing_event, opts):
-    loop = asyncio.get_event_loop()
-    loop.set_exception_handler(custom_except_hook)
-    loop.run_until_complete(run_framebuffer_display(loop, pipe_tail, closing_event, opts))
+def start_receiver(q_mp, closing_event, opts):
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+
+    for signal_enum in [SIGINT, SIGTERM]:
+        loop.add_signal_handler(signal_enum, loop.stop)
+
     try:
+        loop.run_until_complete(run_framebuffer_display(q_mp, closing_event, opts))
         loop.run_forever()
-    except KeyboardInterrupt:
-        print('Exiting Program...')
+    except RuntimeError as exc:
+        print(exc)
     finally:
         loop.close()
         asyncio.set_event_loop(None)
 
-def start_sender(pipe_head, pipe_tail, closing_event, opts):
-    loop = asyncio.get_event_loop()
-    loop.set_exception_handler(custom_except_hook)
-    loop.run_until_complete(runDAQ(loop, pipe_head, pipe_tail, closing_event, opts))
+    # loop = asyncio.get_event_loop()
+    # loop.set_exception_handler(custom_except_hook)
+    # loop.run_until_complete(run_framebuffer_display(loop, q_mp, closing_event, opts))
+    # try:
+    #     loop.run_forever()
+    # except KeyboardInterrupt:
+    #     print('Exiting Program...')
+    # finally:
+    #     loop.close()
+    #     asyncio.set_event_loop(None)
+
+def start_sender(q_mp, closing_event, opts):
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+
+    for signal_enum in [SIGINT, SIGTERM]:
+        loop.add_signal_handler(signal_enum, loop.stop)
+
     try:
+        loop.run_until_complete(runDAQ(q_mp, closing_event, opts))
         loop.run_forever()
-    except KeyboardInterrupt:
-        print('Exiting Program...')
+    except RuntimeError as exc:
+        print(exc)
     finally:
         loop.close()
         asyncio.set_event_loop(None)
+    
+    # loop = asyncio.get_event_loop()
+    # loop.set_exception_handler(custom_except_hook)
+    # loop.run_until_complete(runDAQ(loop, q_mp, closing_event, opts))
+    # try:
+        # loop.run_forever()
+    # except KeyboardInterrupt:
+        # print('Exiting Program...')
+    # finally:
+        # loop.close()
+        # asyncio.set_event_loop(None)
 
-def start_processes(opts):
-    closing_event = Event()  # Event to signal closing of the receiver to the other process
+# def start_processes(opts):
+#     closing_event = Event()  # Event to signal closing of the receiver to the other process
     
-    pipe_tail, pipe_head = Pipe(False)  # Simplex Pipe for data transport
+#     q_mp = Queue(maxsize=0)
+
+#     receiver = Process(target=start_receiver, args=(
+#         q_mp, 
+#         closing_event,
+#         opts,))
+#     receiver.start()
     
-    receiver = Process(target=start_receiver, args=(
-        pipe_tail, 
-        closing_event,
-        opts,))
-    receiver.start()
+#     sender = Process(target=start_sender, args=(
+#         q_mp, 
+#         closing_event, 
+#         opts))
+#     sender.start()
     
-    sender = Process(target=start_sender, args=(
-        pipe_head, 
-        pipe_tail, 
-        closing_event, 
-        opts))
-    sender.start()
-    
-    receiver.join()
-    closing_event.set()
-    if pipe_tail.poll():
-        pipe_tail.recv()
-    sender.join()
-    
-    return 0
+#     receiver.join()
+#     closing_event.set()
+#     sender.join()
 
 def argparser(argv):
     if argv is None:
@@ -176,8 +198,37 @@ def argparser(argv):
 
 def main(argv=None):
     opts = argparser(argv)    
-    exit_data = start_processes(opts)
-    sys.exit(exit_data)
+
+    logging.basicConfig(datefmt = "%Y-%m-%d %H:%M:%S",
+                        format = '%(asctime)s.%(msecs)03dZ ' \
+                                 '%(name)-10s %(levelno)s ' \
+                                 '%(filename)s:%(lineno)d %(message)s')
     
+    logger = logging.getLogger('ZODPLOT')
+    logger.setLevel(opts.logLevel)
+
+    closing_event = Event()  # Event to signal closing of the receiver to the other process
+    
+    q_mp = Queue(maxsize=0)
+
+    receiver = Process(target=start_receiver, args=(
+        q_mp, 
+        closing_event,
+        opts,))
+    receiver.start()
+    
+    sender = Process(target=start_sender, args=(
+        q_mp, 
+        closing_event, 
+        opts))
+    sender.start()
+    
+    try:
+        receiver.join()
+        sender.join()
+    except KeyboardInterrupt:
+        closing_event.set()
+        logger.info('~~~~~~ stopping zodPlot main process ~~~~~~')
+
 if __name__ == "__main__":
     main()

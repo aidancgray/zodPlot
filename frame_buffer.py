@@ -4,14 +4,15 @@ import numpy as np
 import logging
 
 class Framebuffer():
-    def __init__(self, fb_path="/dev/fb0", 
-                 src_size_bit_depth=16,
-                 use_numpy_memmap=False,   # mode=1
-                 use_numpy_buffer=False,   # mode=2
-                 use_buffer_fb=False,      # mode=3
-                 use_numpy_ndarray=False,  # mode=4
-                 ):
-
+    def __init__(self, fb_path="/dev/fb0",src_size_bit_depth=16,
+                 use_numpy_memmap=False, use_numpy_buffer=False, 
+                 use_buffer_fb=False, use_numpy_ndarray=False):
+        '''
+        mode 1 = use_numpy_memmap
+        mode 2 = use_numpy_buffer
+        mode 3 = use_buffer_fb
+        mode 4 = use_numpy_ndarray
+        '''
         logging.basicConfig(datefmt = "%Y-%m-%d %H:%M:%S",
                             format = '%(asctime)s.%(msecs)03dZ ' \
                                      '%(name)-10s %(levelno)s ' \
@@ -63,6 +64,8 @@ class Framebuffer():
             self.fb = mmap.mmap(fb_f, self.width * self.height * self.bytes_pp)
             self.mode = 0
             self.fb_zero = b'\x00' * self.width * self.height * self.bytes_pp
+
+        self.num_photons_total = self.num_photons_current = 0
 
     def update_fb(self):
         if self.mode==2:
@@ -157,13 +160,19 @@ class Framebuffer():
             self.fb.write(self.fb_zero)
         else:
             self.fill_screen(0, 0, 0, 0)
+        
+        self.num_photons_current = 0
 
     def raw_data_to_screen_mono(self, x, y, p, update=False):
-        self.logger.info(f'x_raw: {x}')
-        # self.logger.debug(f'y_raw: {y}')
+        self.logger.debug(f'x_raw: {x}')
+        self.logger.debug(f'y_raw: {y}')
+
+        self.num_photons_current += 1
+        self.num_photons_total += 1
+
         x_screen = round(x * self.size_ratio)
         y_screen = round(y * self.size_ratio)
         # p_screen = p * self.p_ratio
         p_screen = p
-        self.write_px(x_screen, y_screen, p_screen, p_screen, p_screen, update)
+        self.write_px(x_screen, y_screen, p_screen, p_screen, p_screen, 0, update)
         self.logger.debug(f'y: {y_screen} | x: {x_screen} | p: {p_screen}')

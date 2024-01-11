@@ -13,7 +13,7 @@ SLEEP_TIME = 0.000001  # for short sleeps at the end of loops
 
 class packetHandler:
     def __init__(self, q_packet, q_fifo, ip_dict):
-        self.logger = logging.getLogger('ZOD')
+        self.logger = logging.getLogger('DAQ')
         self.q_packet = q_packet
         self.q_fifo = q_fifo
         self.ip_dict = ip_dict
@@ -78,10 +78,12 @@ class packetHandler:
                     await asyncio.sleep(SLEEP_TIME)
                 
                 self.packet_count = pkt_count
+                
+        except KeyboardInterrupt:
+            self.closing_event.set()
 
         except Exception as e:
             self.logger.error(e)
-            pass
 
     async def enqueue_fifo(self, data):
         if self.q_fifo.full():
@@ -101,7 +103,7 @@ if __name__ == "__main__":
     LOG_FORMAT = '%(asctime)s.%(msecs)03dZ %(name)-10s %(levelno)s \
         %(filename)s:%(lineno)d %(message)s'
     logging.basicConfig(datefmt = "%Y-%m-%d %H:%M:%S", format = LOG_FORMAT)
-    logger = logging.getLogger('ZOD')
+    logger = logging.getLogger('DAQ')
     logger.setLevel(logging.DEBUG)
     logger.debug('~~~~~~starting log~~~~~~')
 
