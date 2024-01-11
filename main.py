@@ -31,13 +31,6 @@ TEST_1_IP = '192.168.1.123'
 TEST_2_IP = '172.16.0.171'
 TEST_3_IP = '172.16.1.112'
 
-# def custom_except_hook(loop, context):
-#     logger = logging.getLogger('ZODPLOT')
-#     logger.setLevel(logging.WARN)
-    
-#     if repr(context['exception']) == 'SystemExit()':
-#         logger.debug('Exiting Program...')
-
 async def runDAQ(q_mp, closing_event, opts):
     logging.basicConfig(datefmt = "%Y-%m-%d %H:%M:%S",
                         format = '%(asctime)s.%(msecs)03dZ ' \
@@ -122,17 +115,6 @@ def start_receiver(q_mp, closing_event, opts):
         loop.close()
         asyncio.set_event_loop(None)
 
-    # loop = asyncio.get_event_loop()
-    # loop.set_exception_handler(custom_except_hook)
-    # loop.run_until_complete(run_framebuffer_display(loop, q_mp, closing_event, opts))
-    # try:
-    #     loop.run_forever()
-    # except KeyboardInterrupt:
-    #     print('Exiting Program...')
-    # finally:
-    #     loop.close()
-    #     asyncio.set_event_loop(None)
-
 def start_sender(q_mp, closing_event, opts):
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
@@ -148,38 +130,6 @@ def start_sender(q_mp, closing_event, opts):
     finally:
         loop.close()
         asyncio.set_event_loop(None)
-    
-    # loop = asyncio.get_event_loop()
-    # loop.set_exception_handler(custom_except_hook)
-    # loop.run_until_complete(runDAQ(loop, q_mp, closing_event, opts))
-    # try:
-        # loop.run_forever()
-    # except KeyboardInterrupt:
-        # print('Exiting Program...')
-    # finally:
-        # loop.close()
-        # asyncio.set_event_loop(None)
-
-# def start_processes(opts):
-#     closing_event = Event()  # Event to signal closing of the receiver to the other process
-    
-#     q_mp = Queue(maxsize=0)
-
-#     receiver = Process(target=start_receiver, args=(
-#         q_mp, 
-#         closing_event,
-#         opts,))
-#     receiver.start()
-    
-#     sender = Process(target=start_sender, args=(
-#         q_mp, 
-#         closing_event, 
-#         opts))
-#     sender.start()
-    
-#     receiver.join()
-#     closing_event.set()
-#     sender.join()
 
 def argparser(argv):
     if argv is None:
