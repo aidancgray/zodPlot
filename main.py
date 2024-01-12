@@ -16,8 +16,8 @@ import shlex
 import numpy as np
 
 from signal import SIGINT, SIGTERM
-
 from multiprocessing import Process, Queue, Event
+
 from async_data_sender import AsyncDataSender
 
 from data_rcvr import Plot2FrameBuffer
