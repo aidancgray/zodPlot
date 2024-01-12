@@ -40,28 +40,36 @@ class Framebuffer():
             
         elif use_numpy_buffer:
             fb_f = os.open(fb_path, os.O_RDWR)
-            fb_mmap = mmap.mmap(fb_f, self.width * self.height * self.bytes_pp)
-            self.fb = np.ndarray(shape=(self.height, self.width, self.bytes_pp), dtype=np.uint8, buffer=fb_mmap)
-            self.fb_buf = np.ndarray(shape=self.fb.shape, dtype=float)
+            fb_mmap = mmap.mmap(fb_f, 
+                                self.width * self.height * self.bytes_pp)
+            self.fb = np.ndarray(shape=(self.height, self.width, self.bytes_pp), 
+                                 dtype=np.uint8, buffer=fb_mmap)
+            self.fb_buf = np.ndarray(shape=self.fb.shape, 
+                                     dtype=float)
             self.fb_buf[:] = 0.0
             self.mode = 2
         
         elif use_buffer_fb:
             fb_f = os.open(fb_path, os.O_RDWR)
-            self.fb = mmap.mmap(fb_f, self.width * self.height * self.bytes_pp)
-            self.fb_buf = np.ndarray(shape=(self.height, self.width, self.bytes_pp), dtype=float)
+            self.fb = mmap.mmap(fb_f, 
+                                self.width * self.height * self.bytes_pp)
+            self.fb_buf = np.ndarray(shape=(self.height, self.width, self.bytes_pp), 
+                                     dtype=np.single)
             self.fb_buf[:] = 0.0
             self.mode = 3
 
         elif use_numpy_ndarray:
             fb_f = os.open(fb_path, os.O_RDWR)
-            fb_mmap = mmap.mmap(fb_f, self.width * self.height * self.bytes_pp)
-            self.fb = np.ndarray(shape=(self.height, self.width, self.bytes_pp), dtype=np.uint8, buffer=fb_mmap)
+            fb_mmap = mmap.mmap(fb_f, 
+                                self.width * self.height * self.bytes_pp)
+            self.fb = np.ndarray(shape=(self.height, self.width, self.bytes_pp), 
+                                 dtype=np.uint8, buffer=fb_mmap)
             self.mode = 4
 
         else:
             fb_f = os.open(fb_path, os.O_RDWR)
-            self.fb = mmap.mmap(fb_f, self.width * self.height * self.bytes_pp)
+            self.fb = mmap.mmap(fb_f, 
+                                self.width * self.height * self.bytes_pp)
             self.mode = 0
             self.fb_zero = b'\x00' * self.width * self.height * self.bytes_pp
 
@@ -69,9 +77,12 @@ class Framebuffer():
 
     def update_fb(self):
         if self.mode==2:
-            self.fb[:] = self.fb_buf.round()
+            self.fb[:] = (self.fb_buf + 0.5).astype(np.uint8)
         elif self.mode==3:
-            buf_tmp = np.uint8(np.clip(self.fb_buf.reshape(-1).round(), 0, 255))
+            buf_tmp = self.fb_buf
+            buf_tmp = buf_tmp.reshape(-1)
+            buf_tmp = (buf_tmp + 0.5).astype(np.uint8)
+            buf_tmp = np.clip(buf_tmp, 0, 255)
             self.fb.seek(0)
             self.fb.write(buf_tmp)
 
