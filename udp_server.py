@@ -19,45 +19,38 @@ from signal import SIGINT, SIGTERM
 
 
 class AsyncUDPServer:
-    def __init__(self, local_ip, port, tdc_dict, ip_dict, opts):
-        self.log_level = opts.logLevel
-        logging.basicConfig(datefmt = "%Y-%m-%d %H:%M:%S",
-                            format = '%(asctime)s.%(msecs)03dZ ' \
-                                     '%(name)-10s %(levelno)s ' \
-                                     '%(filename)s:%(lineno)d %(message)s')
-        self.logger = logging.getLogger('DAQ')
-        self.logger.setLevel(self.log_level)
+    def __init__(self, logger, local_ip, port, tdc_dict, ip_dict):
+        self.logger = logger
         self.q_packet = asyncio.Queue()
         self.q_fifo = asyncio.Queue()
         self.addr = (local_ip, port)
         self.tdc_dict = tdc_dict
         self.ip_dict = ip_dict
         self.server_task = None
+        self.logger.info(f'starting udp_server ...')
+
             
     async def start_server(self):
-        self.logger.debug('UDP Server started')
 
         class AsyncUDPServerProtocol(asyncio.DatagramProtocol):
-            def __init__(self, loop, q_packet, tdc_dict, ip_dict, logger):
-                self.loop = loop
+            def __init__(self, logger, loop, q_packet, tdc_dict, ip_dict):
                 self.logger = logger
+                self.loop = loop
                 self.q_packet = q_packet
                 self.tdc_dict = tdc_dict
                 self.ip_dict = ip_dict
                 super().__init__()
 
             def connection_made(self, transport):
-                self.logger.info('UDP Server started')
                 self.transport = transport
-                peername = self.transport.get_extra_info('peername')
-                self.logger.debug(f'Connection made: \'{peername}\'')
+                self.logger.info('... udp server started')
                 
             def datagram_received(self, data, addr):
                 rcv_time = time.time()    
                 if addr[0] in self.tdc_dict.values():
                     self.logger.debug(f'DATA: \'{data}\'')
-                    self.logger.info(f'SRC: \'{addr}\'' ) 
-                    self.logger.info(f'TIME: \'{rcv_time}\'')
+                    self.logger.debug(f'SRC: \'{addr}\'' ) 
+                    self.logger.debug(f'TIME: \'{rcv_time}\'')
                     datagram = (rcv_time, addr, data)
                     asyncio.ensure_future(self.datagram_handler(datagram))
 
@@ -82,11 +75,11 @@ class AsyncUDPServer:
         s.bind(self.addr)
 
         protocol = AsyncUDPServerProtocol(
+            self.logger,
             loop, 
             self.q_packet,
             self.tdc_dict,
             self.ip_dict,
-            self.logger
             )
         
         return await loop.create_datagram_endpoint(

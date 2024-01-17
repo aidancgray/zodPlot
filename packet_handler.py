@@ -9,23 +9,25 @@
 import logging
 import asyncio
 
-SLEEP_TIME = 0.000001  # for short sleeps at the end of loops
 
 class packetHandler:
-    def __init__(self, q_packet, q_fifo, ip_dict):
-        self.logger = logging.getLogger('DAQ')
+    def __init__(self, logger, q_packet, q_fifo, ip_dict):
+        self.logger = logger
         self.q_packet = q_packet
         self.q_fifo = q_fifo
         self.ip_dict = ip_dict
         self.packet_count = 0
+        self.logger.info(f'starting packet_handler ...')
 
     async def start(self):
+        self.logger.info(f'... packet_handler started')
         while True:
             if not self.q_packet.empty():
+                # self.logger.debug(f'q_packet.qsize: {self.q_packet.qsize()}')
                 pkt = await self.q_packet.get()
                 await self.handlePacket(pkt)
             else:
-                await asyncio.sleep(SLEEP_TIME)
+                await asyncio.sleep(0)
 
     async def handlePacket(self, pkt):
         try:
@@ -40,8 +42,6 @@ class packetHandler:
             self.logger.debug(f'PACKET_SOURCE: {pkt_src}')
             self.logger.debug(f'PACKET_COUNT: {pkt_count}')
             
-            # await self.enqueue_fifo((pkt_src, pkt_timestamp))
-
             # Make sure the data is aligned properly and is newest packet            
             if (pkt_data[4] == 0) and pkt_data[5] == 0 and (pkt_count >= self.packet_count):
                 num_photons = (pkt_data[1]<<8) + pkt_data[0]
@@ -55,15 +55,13 @@ class packetHandler:
 
                     p_num = 0
                     for photon in photon_list:
-                        self.logger.debug(f'PHOTON[{p_num}]: ' \
-                                          f'{photon[0:1].hex()} {photon[1:2].hex()} ' \
-                                          f'{photon[2:3].hex()} {photon[3:4].hex()} ' \
-                                          f'{photon[4:5].hex()} {photon[5:6].hex()}')
+                        # self.logger.debug(f'PHOTON[{p_num}]: ' \
+                                        #   f'{photon[0:1].hex()} {photon[1:2].hex()} ' \
+                                        #   f'{photon[2:3].hex()} {photon[3:4].hex()} ' \
+                                        #   f'{photon[4:5].hex()} {photon[5:6].hex()}')
                         
-                        # xA = (photon[1] & 63) << 8
                         xA = photon[1] << 8
                         xB = photon[0]
-                        # yA = (photon[3] & 63) << 8
                         yA = photon[3] << 8
                         yB = photon[2]
 
@@ -75,7 +73,7 @@ class packetHandler:
                         p_num+=1            
                 else:
                     self.logger.debug(f'NO PHOTONS')
-                    await asyncio.sleep(SLEEP_TIME)
+                    await asyncio.sleep(0)
                 
                 self.packet_count = pkt_count
                 
@@ -90,7 +88,7 @@ class packetHandler:
             self.logger.warn(f'FIFO Queue is FULL')
         else:
             await self.q_fifo.put(data)
-        await asyncio.sleep(SLEEP_TIME)
+        await asyncio.sleep(0)
 
 async def runPktHandlerTest(loop):
     pkt_handler = packetHandler(q_packet=asyncio.Queue(),
