@@ -63,23 +63,27 @@ async def runDAQ(q_mp, closing_event):
 
     udp_server = AsyncUDPServer(logger.getChild('udp_server'),
                                 '', 
-                                port, 
+                                port,
+                                closing_event, 
+                                q_mp,
                                 tdc_dict, 
                                 ip_dict)
     
-    pkt_handler = packetHandler(logger.getChild('pkt_handler'),
-                                udp_server.q_packet, 
-                                udp_server.q_fifo, 
-                                ip_dict)
-    
-    data_sender = AsyncDataSender(logger.getChild('data_sender'),
-                                  q_mp,
-                                  closing_event,
-                                  udp_server.q_fifo)
+    await asyncio.gather(udp_server.start_server()) 
 
-    await asyncio.gather(udp_server.start_server(), 
-                         pkt_handler.start(), 
-                         data_sender.start(),)
+    # pkt_handler = packetHandler(logger.getChild('pkt_handler'),
+    #                             udp_server.q_packet, 
+    #                             udp_server.q_fifo, 
+    #                             ip_dict)
+    
+    # data_sender = AsyncDataSender(logger.getChild('data_sender'),
+    #                               q_mp,
+    #                               closing_event,
+    #                               udp_server.q_fifo)
+
+    # await asyncio.gather(udp_server.start_server(), 
+                        #  pkt_handler.start(), 
+                        #  data_sender.start(),)
     
 async def run_framebuffer_display(q_mp, closing_event, opts):
     logger = logging.getLogger(LOGGER_NAME)
