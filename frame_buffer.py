@@ -171,8 +171,8 @@ class Framebuffer():
         self.num_photons_current += 1
         self.num_photons_total += 1
 
-        x_screen = round(x * self.size_ratio)
-        y_screen = round(y * self.size_ratio)
+        x_screen = int((x * self.size_ratio) + 0.5)
+        y_screen = int((y * self.size_ratio) + 0.5)
 
         # p_screen = p * self.p_ratio
         p_screen = p

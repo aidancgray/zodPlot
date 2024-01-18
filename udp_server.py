@@ -105,6 +105,7 @@ class AsyncUDPServer:
                         await asyncio.sleep(0)
                     
                     self.packet_count = pkt_count
+                self.logger.debug(f'Time to process packet: {time.time() - pkt_timestamp}')
 
             def enqueue_fifo(self, data):
                 if self.q_fifo.full():

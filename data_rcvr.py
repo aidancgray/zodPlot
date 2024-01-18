@@ -19,19 +19,22 @@ class Plot2FrameBuffer():
 
     def print_photon_count(self):
         self.logger.info('')
-        self.logger.info(f'    total photons: {self.fb.num_photons_total}')
-        self.logger.info(f'  current photons: {self.fb.num_photons_current}')
+        self.logger.info(f'total photons:   {self.fb.num_photons_total}')
+        self.logger.info(f'current photons: {self.fb.num_photons_current}')
         
     async def start_get_q_mp_data(self):
         self.logger.info('... framebuffer display started')
         try:
             while not self.closing_event.is_set():
                 if not self.q_mp.empty():
+                    # t1 = time.time()
                     new_data = self.q_mp.get()
                     self.fb.raw_data_to_screen_mono(new_data[0],
                                                     new_data[1],
                                                     new_data[2],
                                                     update=False,)
+                    # t2 = time.time()
+                    # self.logger.info(f'get_q_mp_data time: {t2-t1}')
                 await asyncio.sleep(0)
 
         except KeyboardInterrupt:
@@ -42,10 +45,9 @@ class Plot2FrameBuffer():
     async def start_fb_plot(self):
         try:
             while not self.closing_event.is_set():
-                now = time.time()
-                # self.logger.info(f'time since update:{now-self.timer}')
-                self.timer = now
+                # t1 = time.time()
                 self.fb.update_fb()
+                # self.logger.info(f'{time.time() - t1}')
                 await asyncio.sleep(self.update_time)
         except KeyboardInterrupt:
             self.closing_event.set()
