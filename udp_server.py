@@ -88,24 +88,13 @@ class AsyncUDPServer:
                         # Split the packet into photons (X, Y, P) each consisting of 2 bytes
                         data_photons = pkt_data[6:]
                         photon_list = [data_photons[i:i+6] for i in range(0, num_photon_bytes, 6)]
+                        self.enqueue_fifo(photon_list)         
     
-                        for photon in photon_list:                         
-                            xA = photon[1] << 8
-                            xB = photon[0]
-                            yA = photon[3] << 8
-                            yB = photon[2]
-    
-                            x = xA + xB
-                            y = yA + yB
-                            p = photon[4]
-                            self.logger.debug(f'PHOTON: ({x}, {y}, {p})')
-                            self.enqueue_fifo((x, y, p))         
                     else:
                         self.logger.debug(f'NO PHOTONS')
                         await asyncio.sleep(0)
                     
                     self.packet_count = pkt_count
-                self.logger.debug(f'Time to process packet: {time.time() - pkt_timestamp}')
 
             def enqueue_fifo(self, data):
                 if self.q_fifo.full():

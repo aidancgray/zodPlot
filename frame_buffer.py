@@ -1,3 +1,4 @@
+import time
 import os
 import mmap
 import numpy as np
@@ -67,6 +68,12 @@ class Framebuffer():
             self.fb_zero = b'\x00' * self.width * self.height * self.bytes_pp
 
         self.num_photons_total = self.num_photons_current = 0
+
+    def screenshot(self):
+        filename = time.strftime("%Y%m%d_%H%M%S")
+        filepath = f'/home/idg/imgs/{filename}.cap'
+        with open(filepath, 'wb') as f:
+            f.write(self.fb)
 
     def update_fb(self):
         if self.mode==2:
@@ -174,6 +181,6 @@ class Framebuffer():
         x_screen = int((x * self.size_ratio) + 0.5)
         y_screen = int((y * self.size_ratio) + 0.5)
 
-        # p_screen = p * self.p_ratio
-        p_screen = p
+        p_screen = p * self.p_ratio
+        # p_screen = p
         self.write_px(x_screen, y_screen, p_screen, p_screen, p_screen, 0, update)
