@@ -89,7 +89,6 @@ class AsyncUDPServer:
                         data_photons = pkt_data[6:]
                         photon_list = [data_photons[i:i+6] for i in range(0, num_photon_bytes, 6)]
     
-                        p_num = 0
                         for photon in photon_list:                         
                             xA = photon[1] << 8
                             xB = photon[0]
@@ -100,8 +99,7 @@ class AsyncUDPServer:
                             y = yA + yB
                             p = photon[4]
                             self.logger.debug(f'PHOTON: ({x}, {y}, {p})')
-                            self.enqueue_fifo((x, y, p))
-                            p_num+=1            
+                            self.enqueue_fifo((x, y, p))         
                     else:
                         self.logger.debug(f'NO PHOTONS')
                         await asyncio.sleep(0)
@@ -174,13 +172,21 @@ def start_processes(logger, local_ip, port, q_fifo, closing_event, tdc_dict, ip_
 
 def main(argv=None):
     opts = argparser(argv)
-
-    LOG_FORMAT = '%(asctime)s.%(msecs)03dZ %(name)-10s %(levelno)s \
-        %(filename)s:%(lineno)d %(message)s'
-    logging.basicConfig(datefmt = "%Y-%m-%d %H:%M:%S", format = LOG_FORMAT)
-    logger = logging.getLogger('DAQ')
+    
+    # create logger
+    filename = __file__.split('/')[-1].split('.')[0]
+    logger = logging.getLogger(filename)
     logger.setLevel(opts.logLevel)
-    logger.info('~~~~~~starting log~~~~~~')
+    # create stream handler
+    con_hdlr = logging.StreamHandler()
+    con_hdlr.setLevel(opts.logLevel)
+    # create formatter and add to handler
+    log_format = '%(asctime)s | %(name)-20s | %(levelname)-7s | %(message)s'
+    log_formatter = logging.Formatter(datefmt = '%Y-%m-%d | %H:%M:%S',
+                                      fmt = log_format)
+    con_hdlr.setFormatter(log_formatter)
+    # add handler to logger
+    logger.addHandler(con_hdlr)
 
     TDC_0_IP = '192.168.1.10'
     TEST_0_IP = '172.16.0.10'
@@ -208,6 +214,7 @@ def main(argv=None):
     
     q_fifo = Queue()
     closing_event = Event()
+
     p = Process(target=start_processes,
                 args=(
                     logger.getChild('udp_server'), 

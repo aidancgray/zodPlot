@@ -18,12 +18,8 @@ import numpy as np
 from signal import SIGINT, SIGTERM
 from multiprocessing import Process, Queue, Event
 
-from async_data_sender import AsyncDataSender
-
 from data_rcvr import Plot2FrameBuffer
-
 from udp_server import AsyncUDPServer
-from packet_handler import packetHandler
 
 LOGGER_NAME = 'zod_plot'
 
@@ -64,26 +60,12 @@ async def runDAQ(q_mp, closing_event):
     udp_server = AsyncUDPServer(logger.getChild('udp_server'),
                                 '', 
                                 port,
-                                closing_event, 
                                 q_mp,
+                                closing_event, 
                                 tdc_dict, 
                                 ip_dict)
     
     await asyncio.gather(udp_server.start_server()) 
-
-    # pkt_handler = packetHandler(logger.getChild('pkt_handler'),
-    #                             udp_server.q_packet, 
-    #                             udp_server.q_fifo, 
-    #                             ip_dict)
-    
-    # data_sender = AsyncDataSender(logger.getChild('data_sender'),
-    #                               q_mp,
-    #                               closing_event,
-    #                               udp_server.q_fifo)
-
-    # await asyncio.gather(udp_server.start_server(), 
-                        #  pkt_handler.start(), 
-                        #  data_sender.start(),)
     
 async def run_framebuffer_display(q_mp, closing_event, opts):
     logger = logging.getLogger(LOGGER_NAME)
