@@ -3,7 +3,7 @@
 # Aidan Gray
 # aidan.gray@idg.jhu.edu
 #
-# udp listen on Port 60000 for .10
+# udp listen on Port 60000 for *.*.*.10
 ###############################################################################
 
 import sys
@@ -118,6 +118,9 @@ def argparser(argv):
                         help='logging threshold. 10=debug, 20=info, 30=warn')
     parser.add_argument('--updateTime', type=int, default=1000,
                         help='screen update time (ms)')
+    parser.add_argument('--gain', type=int, default=1,
+                        help='gain to increase photon brightness per pixel. \
+                            A value of 18718 would use the original photon value.')
     opts = parser.parse_args(argv)
 
     return opts

@@ -15,7 +15,7 @@ class Plot2FrameBuffer():
         self.timer = time.time()
         self.update_time = opts.updateTime / 1000
 
-        self.fb = Framebuffer(use_buffer_fb=True)
+        self.fb = Framebuffer(gain=opts.gain)
 
     def print_photon_count(self):
         self.logger.info('')
