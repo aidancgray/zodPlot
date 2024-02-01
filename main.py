@@ -21,7 +21,9 @@ from multiprocessing import Process, Queue, Event
 from data_rcvr import Plot2FrameBuffer
 from udp_server import AsyncUDPServer
 
+
 LOGGER_NAME = 'zod_plot'
+CLEAR_GPIO_NUM = 21
 
 TDC_0_IP = '192.168.1.10'
 TEST_0_IP = '172.16.0.10'
@@ -70,7 +72,11 @@ async def runDAQ(q_mp, closing_event):
 async def run_framebuffer_display(q_mp, closing_event, opts):
     logger = logging.getLogger(LOGGER_NAME)
 
-    plot2FB = Plot2FrameBuffer(logger.getChild('fb_display'), q_mp, closing_event, opts)
+    plot2FB = Plot2FrameBuffer(logger.getChild('fb_display'), 
+                               q_mp, 
+                               closing_event, 
+                               CLEAR_GPIO_NUM,
+                               opts,)
     
     await asyncio.gather(plot2FB.start_get_q_mp_data(), 
                          plot2FB.start_fb_plot())
@@ -106,7 +112,7 @@ def start_sender(q_mp, closing_event):
     finally:
         loop.close()
         asyncio.set_event_loop(None)
-
+    
 def argparser(argv):
     if argv is None:
         argv = sys.argv[1:]
@@ -143,18 +149,22 @@ def main(argv=None):
     logger.addHandler(con_hdlr)
 
     closing_event = Event()  # Event to signal closing of the receiver to the other process
-    
+    reset_event = Event()  # Event to signal the press of the reset button
+
     q_mp = Queue(maxsize=0)
 
     receiver = Process(target=start_receiver, args=(q_mp, closing_event, opts))
-    receiver.start()
-    
     sender = Process(target=start_sender, args=(q_mp, closing_event))
-    sender.start()
+    # interrupter = Process(target=start_interrupter, args=(closing_event, reset_event))
     
+    receiver.start()
+    sender.start()
+    # interrupter.start()
+
     try:
         receiver.join()
         sender.join()
+        # interrupter.join()
     except KeyboardInterrupt:
         closing_event.set()
         logger.info('~~~~~~ stopping zodPlot main process ~~~~~~')
