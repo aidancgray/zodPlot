@@ -1,3 +1,4 @@
+#!/home/idg/src/zodPlot/venv/bin/python
 import os
 import sys
 import subprocess
