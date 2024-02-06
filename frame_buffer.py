@@ -41,6 +41,10 @@ class Framebuffer():
         filepath = f'/home/idg/imgs/{filename}.cap'
         subprocess.run(['cp', '/dev/fb0', filepath])
 
+    def write_bytes_to_fb(self, bytes_):
+        self.fb.seek(0)
+        self.fb.write(bytes_)
+
     def update_fb(self):
         buf_tmp = self.fb_buf * self.gain
         buf_tmp_flat = buf_tmp.reshape(-1)
