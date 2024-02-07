@@ -49,7 +49,7 @@ if __name__ == "__main__":
     
     byte_data_list = get_splash_images(splash_dir)
 
-    byte_data_list = byte_data_list[:-1] + byte_data_list[::-1]
+    byte_data_list = byte_data_list[::-1]
 
     if len(byte_data_list) > 0:
         for img_bytes in byte_data_list:
