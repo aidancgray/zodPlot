@@ -6,13 +6,13 @@ from frame_buffer import Framebuffer
 
 class Plot2FrameBuffer():
 
-    def __init__(self, logger, q_mp, closing_event, gpio_num, opts):
+    def __init__(self, logger, q_mp, closing_event, gpio_map, opts):
         self.logger = logger
         self.logger.info('starting framebuffer display ...')
 
         self.q_mp = q_mp
         self.closing_event = closing_event
-        self.gpio_num = gpio_num
+        self.gpio_map = gpio_map
 
         self.timer = time.time()
         self.update_time = opts.updateTime / 1000
@@ -56,10 +56,9 @@ class Plot2FrameBuffer():
         try:
             if not self.zodpi.connected:
                 self.logger.error('!!! GPIO not connected !!!')
+                cb_list = []
             else:
-                self.cb = self.zodpi.callback(self.gpio_num, 
-                                              gpio.FALLING_EDGE, 
-                                              self.clear_screen_cb)
+                cb_list = self.setup_gpio_callbacks()
                 
             while not self.closing_event.is_set():
                 self.fb.update_fb()
@@ -70,12 +69,27 @@ class Plot2FrameBuffer():
         
         finally:
             try:
-                self.cb.cancel()
+                for cb in cb_list:
+                    cb.cancel()
                 self.zodpi.stop()
             except Exception as e:
                 self.logger.error(f'{e}')
+
+    def setup_gpio_callbacks(self):
+        cb_list = []
+        cb_list.append(self.zodpi.callback(self.gpio_map['clear'], 
+                                           gpio.FALLING_EDGE, 
+                                           self.clear_screen_cb))
+        
+        cb_list.append(self.zodpi.callback(self.gpio_map['screenshot'], 
+                                           gpio.FALLING_EDGE, 
+                                           self.screenshot_cb))
 
     def clear_screen_cb(self, GPIO, level, tick):
         self.fb.reset_fb()
         self.clr_count += 1 
         self.logger.info(f'reset count: {self.clr_count}')
+
+    def screenshot_cb(self, GPIO, level, tick):
+        self.fb.screenshot()
+        self.logger.info('*screenshot*')

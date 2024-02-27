@@ -14,6 +14,7 @@ import logging
 import argparse
 import shlex
 import numpy as np
+import pigpio as gpio
 
 from signal import SIGINT, SIGTERM
 from multiprocessing import Process, Queue, Event
@@ -23,7 +24,13 @@ from udp_server import AsyncUDPServer
 
 
 LOGGER_NAME = 'zod_plot'
-CLEAR_GPIO_NUM = 21
+GPIO_MAP = {
+    'clear': 21,
+    'screenshot': 20,
+    'enc_low': 19,
+    'enc_high': 26,
+    'enc_switch': 13,
+}
 
 TDC_0_IP = '192.168.1.10'
 TEST_0_IP = '172.16.0.10'
@@ -75,7 +82,7 @@ async def run_framebuffer_display(q_mp, closing_event, opts):
     plot2FB = Plot2FrameBuffer(logger.getChild('fb_display'), 
                                q_mp, 
                                closing_event, 
-                               CLEAR_GPIO_NUM,
+                               GPIO_MAP,
                                opts,)
     
     await asyncio.gather(plot2FB.start_get_q_mp_data(), 
@@ -147,6 +154,8 @@ def main(argv=None):
     con_hdlr.setFormatter(log_formatter)
     # add handler to logger
     logger.addHandler(con_hdlr)
+
+    
 
     closing_event = Event()  # Event to signal closing of the receiver to the other process
     reset_event = Event()  # Event to signal the press of the reset button
