@@ -6,8 +6,7 @@
 # udp listen on Port 60000 for *.*.*.10
 ###############################################################################
 
-import sys
-import time
+import sys, os
 import asyncio
 import netifaces
 import logging
@@ -25,10 +24,10 @@ from udp_server import AsyncUDPServer
 
 LOGGER_NAME = 'zod_plot'
 GPIO_MAP = {
-    'clear': 21,
-    'screenshot': 20,
-    'enc_low': 19,
-    'enc_high': 26,
+    'clear': 20,
+    'screenshot': 21,
+    'enc_lo': 26,
+    'enc_hi': 19,
     'enc_switch': 13,
 }
 
@@ -134,6 +133,8 @@ def argparser(argv):
     parser.add_argument('--gain', type=int, default=1,
                         help='gain to increase photon brightness per pixel. \
                             A value of 18718 would use the original photon value.')
+    parser.add_argument('--imgLog', type=str, default=f'/home/{os.getlogin()}/imgs/',
+                        help='path to the screenshots')
     opts = parser.parse_args(argv)
 
     return opts
