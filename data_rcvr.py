@@ -2,7 +2,7 @@ import time
 import asyncio
 import pigpio as gpio
 from frame_buffer import Framebuffer
-
+from ec11 import Encoder
 
 class Plot2FrameBuffer():
 
@@ -17,13 +17,26 @@ class Plot2FrameBuffer():
         self.timer = time.time()
         self.update_time = opts.updateTime / 1000
 
-        self.fb = Framebuffer(gain=opts.gain)
+        self.fb = Framebuffer(gain=opts.gain, scr_shot_path=opts.imgLog)
 
+        # Setup GPIO pins
         self.zodpi = gpio.pi()
-        self.zodpi.set_mode(self.gpio_num, gpio.INPUT)
-        self.zodpi.set_pull_up_down(self.gpio_num, gpio.PUD_UP)
-        self.zodpi.set_glitch_filter(self.gpio_num, 300)
+
+        # Setup SCREENSHOT button
+        self.zodpi.set_mode(self.gpio_map['screenshot'], gpio.INPUT)
+        self.zodpi.set_pull_up_down(self.gpio_map['screenshot'], gpio.PUD_UP)
+        self.zodpi.set_glitch_filter(self.gpio_map['screenshot'], 10000)
+
+        # Setup CLEAR button
+        self.zodpi.set_mode(self.gpio_map['clear'], gpio.INPUT)
+        self.zodpi.set_pull_up_down(self.gpio_map['clear'], gpio.PUD_UP)
+        self.zodpi.set_glitch_filter(self.gpio_map['clear'], 10000)
     
+        # Setup GAIN control knob
+        self.enc = Encoder(low=self.gpio_map['enc_lo'],
+                           high=self.gpio_map['enc_hi'],
+                           switch=self.gpio_map['enc_switch'])
+
         self.clr_count = 0
 
     def print_photon_count(self):
@@ -61,6 +74,8 @@ class Plot2FrameBuffer():
                 cb_list = self.setup_gpio_callbacks()
                 
             while not self.closing_event.is_set():
+                gain = self.enc.value * 500 if self.enc.value > 0 else 0
+                self.fb.gain = gain
                 self.fb.update_fb()
                 await asyncio.sleep(self.update_time)
 
