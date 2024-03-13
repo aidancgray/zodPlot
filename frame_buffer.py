@@ -5,9 +5,11 @@ import subprocess
 import numpy as np
 
 class Framebuffer():
-    def __init__(self, fb_path="/dev/fb0", src_size_bit_depth=16, gain=1):
+    def __init__(self, fb_path="/dev/fb0", src_size_bit_depth=16, gain=1,
+                 scr_shot_path='/home/idg/imgs/'):
 
         self.gain = gain
+        self.scr_shot_path = scr_shot_path
 
         with open("/sys/class/graphics/fb0/virtual_size", "r") as f:
             screen = f.read()
@@ -38,7 +40,7 @@ class Framebuffer():
 
     def screenshot(self):
         filename = time.strftime("%Y%m%d_%H%M%S")
-        filepath = f'/home/idg/imgs/{filename}.cap'
+        filepath = f'{self.scr_shot_path}{filename}.cap'
         subprocess.run(['cp', '/dev/fb0', filepath])
 
     def write_bytes_to_fb(self, bytes_):
