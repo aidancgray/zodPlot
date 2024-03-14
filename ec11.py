@@ -88,5 +88,5 @@ if __name__ == "__main__":
 
     while True:
         val, dir = enc.get_status()
-        print(f'{val} | {dir}')
-        time.sleep(1)
+        print(f'{val}', end='\r')
+        time.sleep(0.1)
