@@ -74,7 +74,13 @@ class Plot2FrameBuffer():
                 cb_list = self.setup_gpio_callbacks()
                 
             while not self.closing_event.is_set():
-                gain = self.enc.value * 500 if self.enc.value > 0 else 0
+                if self.enc.value > 0 and self.enc.value <= 20:
+                    gain = self.enc.value * 500
+                elif self.enc.value > 20:
+                    gain = 10000
+                else:
+                    gain = 1
+               
                 self.fb.gain = gain
                 self.fb.update_fb()
                 await asyncio.sleep(self.update_time)
