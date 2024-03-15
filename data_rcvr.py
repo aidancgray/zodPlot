@@ -74,7 +74,9 @@ class Plot2FrameBuffer():
                 cb_list = self.setup_gpio_callbacks()
                 
             while not self.closing_event.is_set():
-                if self.enc.value > 0 and self.enc.value <= 20:
+                if self.enc.value == 0:
+                    gain = 1
+                elif self.enc.value > 0 and self.enc.value <= 20:
                     gain = self.enc.value * 500
                 elif self.enc.value > 20:
                     gain = 10000

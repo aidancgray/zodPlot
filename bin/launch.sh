@@ -5,7 +5,7 @@ source $srcDir/venv/bin/activate
 
 now=`date +"%Y-%m-%d_%H-%M-%S"`
 
-nohup python $srcDir/load_splash.py $srcDir/splash_screen 0.05 >/dev/null 2>&1 &
+nohup python $srcDir/load_splash.py $srcDir/splash_screen 0.05 >/dev/null 2>&1
 
 nohup python $srcDir/wait_for_start.py >/dev/null 2>&1
 startCode=$?
