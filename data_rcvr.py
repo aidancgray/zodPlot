@@ -76,9 +76,9 @@ class Plot2FrameBuffer():
             while not self.closing_event.is_set():
                 if self.enc.value == 0:
                     gain = 1
-                elif self.enc.value > 0 and self.enc.value <= 20:
-                    gain = self.enc.value * 500
-                elif self.enc.value > 20:
+                elif self.enc.value > 0 and self.enc.value <= 50:
+                    gain = self.enc.value * 200
+                elif self.enc.value > 50:
                     gain = 10000
                 else:
                     gain = 1
