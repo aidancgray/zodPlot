@@ -21,7 +21,7 @@ def main():
 
     start_flag = True
     while start_flag:
-        if pi_gpio.wait_for_edge(START_BUTTON_PIN, gpio.EITHER_EDGE, 10):
+        if pi_gpio.wait_for_edge(START_BUTTON_PIN, gpio.FALLING_EDGE, 10):
             start_flag = False
             if pi_gpio.read(ENC_BUTTON_PIN) == 0:
                 exit_code = 1
