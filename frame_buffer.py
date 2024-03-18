@@ -5,7 +5,7 @@ import subprocess
 import numpy as np
 
 class Framebuffer():
-    def __init__(self, fb_path="/dev/fb0", src_size_bit_depth=16, gain=1,
+    def __init__(self, fb_path="/dev/fb0", src_size_bit_depth=14, gain=1,
                  scr_shot_path='/home/idg/imgs/'):
 
         self.gain = gain
@@ -106,5 +106,5 @@ class Framebuffer():
         self.write_px(x_screen, y_screen, p_screen, p_screen, p_screen, 0, update)
 
     def reset_fb(self):
-        self.screenshot()
+        # self.screenshot()
         self.clear_screen()
