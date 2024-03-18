@@ -1,13 +1,17 @@
 import pigpio as gpio
 
 class Encoder:
-    def __init__(self, low, high, switch, callback=None):
+    def __init__(self, low, high, switch, 
+                 start_val=0, min_val=None, max_val=None, callback=None):
         self.pin_lo = low
         self.pin_hi = high
         self.pin_switch = switch
+        self.start_val = start_val
+        self.min_val = min_val
+        self.max_val = max_val
         self.callback = callback
-
-        self.value = 0
+        
+        self.value = self.start_val
         self.prev_state = 0b11  # 00 | 01 | 10 | 11
         self.direction = None  # l | r
 
@@ -34,7 +38,7 @@ class Encoder:
         return self.value, self.direction
 
     def reset_value(self, GPIO, level, tick):
-        self.value = 0
+        self.value = self.start_val
         self.prev_state = 0b11
         self.direction = None
 
@@ -52,29 +56,51 @@ class Encoder:
         elif self.prev_state == 0b10:
             if new_state == 0b11:
                 if self.direction == 'l':
-                    self.value -= 1    
+                    # self.value -= 1 
+                    self.dec_val()   
             elif new_state == 0b00:
                 self.direction = 'r'
 
         elif self.prev_state == 0b01:
             if new_state == 0b11:
                 if self.direction == 'r':
-                    self.value += 1
+                    # self.value += 1
+                    self.inc_val()
             elif new_state == 0b00:
                 self.direction = 'l'
 
         else:
             if new_state == 0b11:
                 if self.direction == 'l':
-                    self.value -= 1
+                    # self.value -= 1
+                    self.dec_val()
                 elif self.direction == 'r':
-                    self.value += 1
+                    # self.value += 1
+                    self.inc_val()
             elif new_state == 0b10:
                 self.direction = 'l'
             elif new_state == 0b01:
                 self.direction = 'r'
 
         self.prev_state = new_state
+
+    def inc_val(self, inc=1):
+        if self.max_val != None:
+            if ( self.value + inc) > self.max_val:
+                self.value = self.max_val
+            else:
+                self.value += inc
+        else:
+            self.value += inc
+
+    def dec_val(self, dec=1):
+        if self.min_val != None:
+            if ( self.value - dec ) < self.min_val:
+                self.value = self.min_val
+            else:
+                self.value -= dec
+        else:
+            self.value -= dec
 
     def __del__(self):
         for cb in self.cb_list:

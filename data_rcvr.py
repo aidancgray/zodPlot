@@ -35,7 +35,10 @@ class Plot2FrameBuffer():
         # Setup GAIN control knob
         self.enc = Encoder(low=self.gpio_map['enc_lo'],
                            high=self.gpio_map['enc_hi'],
-                           switch=self.gpio_map['enc_switch'])
+                           switch=self.gpio_map['enc_switch'],
+                           start_val=1,
+                           min_val=1,
+                           max_val=40,)
 
         self.clr_count = 0
 
@@ -76,10 +79,10 @@ class Plot2FrameBuffer():
             while not self.closing_event.is_set():
                 if self.enc.value == 0:
                     gain = 1
-                elif self.enc.value > 0 and self.enc.value <= 50:
-                    gain = self.enc.value * 200
-                elif self.enc.value > 50:
-                    gain = 10000
+                elif self.enc.value > 0 and self.enc.value <= 40:
+                    gain = self.enc.value * 25
+                elif self.enc.value > 40:
+                    gain = 1000
                 else:
                     gain = 1
                
