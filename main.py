@@ -24,8 +24,8 @@ from udp_server import AsyncUDPServer
 
 LOGGER_NAME = 'zod_plot'
 GPIO_MAP = {
-    'clear': 20,
-    'screenshot': 21,
+    'clear': 21,
+    'screenshot': 20,
     'enc_lo': 26,
     'enc_hi': 19,
     'enc_switch': 13,
