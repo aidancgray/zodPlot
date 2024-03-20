@@ -7,17 +7,17 @@ now=`date +"%Y-%m-%d_%H-%M-%S"`
 
 nohup python $srcDir/load_splash.py $srcDir/splash_screen 0.05 >/dev/null 2>&1
 
-nohup python $srcDir/wait_for_start.py >/dev/null 2>&1
+nohup python $srcDir/wait_for_start.py $srcDir/screens/title_screen_a.fb $srcDir/screens/title_screen_b.fb >/dev/null 2>&1
 startCode=$?
 
 if (( $startCode == 1 ))
 then
-    printf "SECRET START!\n"
+    printf "DEBUG_1\n"
     cp $srcDir/screens/blank.fb /dev/fb0
 
 elif (( $startCode == 2 ))
 then
-    printf "SECRET ~OTHER~ START!\n"
+    printf "DEBUG_2\n"
     cp $srcDir/screens/blank.fb /dev/fb0
 else
     if mountpoint -q /mnt/usbLog
