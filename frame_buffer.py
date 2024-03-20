@@ -50,8 +50,10 @@ class Framebuffer():
     def update_fb(self):
         buf_tmp = self.fb_buf * self.gain
         buf_tmp_flat = buf_tmp.reshape(-1)
-        buf_tmp_int = (buf_tmp_flat + 0.5).astype(np.uint8)
-        buf_tmp_ready = np.clip(buf_tmp_int, 0, 255)
+        # buf_tmp_int = (buf_tmp_flat + 0.5).astype(np.uint8)
+        # buf_tmp_ready = np.clip(buf_tmp_int, 0, 255)
+        buf_tmp_clip = np.clip(buf_tmp_flat, 0.0, 255.0)
+        buf_tmp_ready = (buf_tmp_clip + 0.5).astype(np.uint8)
         self.fb.seek(0)
         self.fb.write(buf_tmp_ready)
 
